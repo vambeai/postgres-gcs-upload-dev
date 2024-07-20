@@ -1,4 +1,4 @@
-import { envsafe, str, bool } from "envsafe";
+import { bool, envsafe, str } from "envsafe";
 
 export const env = envsafe({
   GOOGLE_PROJECT_ID: str(),
@@ -21,7 +21,7 @@ export const env = envsafe({
   }),
   RUN_ON_STARTUP: bool({
     desc: "Run a backup on startup of this application",
-    default: false,
+    default: true,
     allowEmpty: true,
   }),
 });
