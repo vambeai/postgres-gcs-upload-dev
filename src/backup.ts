@@ -53,15 +53,13 @@ const dumpToFile = async (filePath: string) => {
 
 const deleteFile = async (path: string) => {
   console.log("Deleting file...");
-  await new Promise((resolve, reject) => {
-    unlink(path, (err) => {
-      if (err) {
-        reject({ error: JSON.stringify(err) });
-        return;
-      }
-      resolve(undefined);
-    });
-  });
+  try {
+    await unlink(path);
+    console.log("File deleted successfully");
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    throw error; // Re-throw the error if you want to handle it in the calling function
+  }
 };
 
 export const backup = async () => {
