@@ -1,5 +1,5 @@
-import { exec } from "child_process";
 import { Storage, UploadOptions } from "@google-cloud/storage";
+import { exec } from "child_process";
 import { unlink } from "fs";
 
 import { env } from "./env";
@@ -47,24 +47,34 @@ const deleteFile = async (path: string) => {
   console.log("Deleting file...");
   await new Promise((resolve, reject) => {
     unlink(path, (err) => {
-      reject({ error: JSON.stringify(err) });
-      return;
+      if (err) {
+        reject({ error: JSON.stringify(err) });
+        return;
+      }
+      resolve(undefined);
     });
-    resolve(undefined);
   });
 };
-
 export const backup = async () => {
-  console.log("Initiating DB backup...");
+  try {
+    console.log("Initiating DB backup...");
 
-  let date = new Date().toISOString();
-  const timestamp = date.replace(/[:.]+/g, "-");
-  const filename = `${env.BACKUP_PREFIX}backup-${timestamp}.tar.gz`;
-  const filepath = `/tmp/${filename}`;
+    let date = new Date().toISOString();
+    const timestamp = date.replace(/[:.]+/g, "-");
+    const filename = `${env.BACKUP_PREFIX}backup-${timestamp}.tar.gz`;
+    const filepath = `/tmp/${filename}`;
 
-  await dumpToFile(filepath);
-  await uploadToGCS({ name: filename, path: filepath });
-  await deleteFile(filepath);
+    console.log(`Dumping to file: ${filepath}`);
+    await dumpToFile(filepath);
 
-  console.log("DB backup complete...");
+    console.log(`Uploading file: ${filename}`);
+    await uploadToGCS({ name: filename, path: filepath });
+
+    console.log(`Deleting file: ${filepath}`);
+    await deleteFile(filepath);
+
+    console.log("DB backup complete...");
+  } catch (error) {
+    console.error("Backup failed:", error);
+  }
 };
