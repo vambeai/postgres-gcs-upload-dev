@@ -24,4 +24,7 @@ export const env = envsafe({
     default: true,
     allowEmpty: true,
   }),
+  DB_PASSWORD: str({
+    desc: "Password for the database",
+  }),
 });
