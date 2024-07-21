@@ -27,17 +27,14 @@ const dumpToFile = async (path: string) => {
   console.log("Dumping DB to file...");
 
   await new Promise((resolve, reject) => {
-    exec(
-      `pg_dump ${env.BACKUP_DATABASE_URL} -F t | gzip > ${path}`,
-      (error, _, stderr) => {
-        if (error) {
-          reject({ error: JSON.stringify(error), stderr });
-          return;
-        }
-
-        resolve(undefined);
+    const command = `pg_dump ${env.BACKUP_DATABASE_URL} | gzip > ${path}`;
+    exec(command, (error, _, stderr) => {
+      if (error) {
+        reject({ error: JSON.stringify(error), stderr });
+        return;
       }
-    );
+      resolve(undefined);
+    });
   });
 
   console.log("DB dumped to file...");
@@ -55,13 +52,14 @@ const deleteFile = async (path: string) => {
     });
   });
 };
+
 export const backup = async () => {
   try {
     console.log("Initiating DB backup...");
 
     let date = new Date().toISOString();
     const timestamp = date.replace(/[:.]+/g, "-");
-    const filename = `${env.BACKUP_PREFIX}backup-${timestamp}.tar.gz`;
+    const filename = `${env.BACKUP_PREFIX}backup-${timestamp}.sql.gz`;
     const filepath = `/tmp/${filename}`;
 
     console.log(`Dumping to file: ${filepath}`);
