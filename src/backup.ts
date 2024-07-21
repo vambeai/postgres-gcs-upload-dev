@@ -70,7 +70,7 @@ export const backup = async () => {
 
     let date = new Date().toISOString();
     const timestamp = date.replace(/[:.]+/g, "-");
-    const filename = `${env.BACKUP_PREFIX}backup-${timestamp}.sql.gz`;
+    const filename = `backup-${timestamp}.sql.gz`;
     const filepath = `/tmp/bucket-ai/${filename}`;
 
     console.log(`Dumping to file: ${filepath}`);
