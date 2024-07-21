@@ -1,6 +1,7 @@
 import { Storage, UploadOptions } from "@google-cloud/storage";
 import { exec } from "child_process";
-import { unlink } from "fs";
+import { mkdir, unlink } from "fs/promises";
+import path from "path";
 
 import { env } from "./env";
 
@@ -23,21 +24,31 @@ const uploadToGCS = async ({ name, path }: { name: string; path: string }) => {
   console.log("Backup uploaded to GCS...");
 };
 
-const dumpToFile = async (path: string) => {
+const ensureDirectoryExists = async (filePath: string) => {
+  const directory = path.dirname(filePath);
+  await mkdir(directory, { recursive: true });
+};
+
+const dumpToFile = async (filePath: string) => {
   console.log("Dumping DB to file...");
 
-  await new Promise((resolve, reject) => {
-    const command = `pg_dump ${env.BACKUP_DATABASE_URL} | gzip > ${path}`;
-    exec(command, (error, _, stderr) => {
-      if (error) {
-        reject({ error: JSON.stringify(error), stderr });
-        return;
-      }
-      resolve(undefined);
-    });
-  });
+  await ensureDirectoryExists(filePath);
 
-  console.log("DB dumped to file...");
+  return new Promise((resolve, reject) => {
+    // Use pg_dumpall instead of pg_dump to avoid version mismatch issues
+    const command = `pg_dumpall -h viaduct.proxy.rlwy.net -p 57886 -U postgres | gzip > ${filePath}`;
+    exec(
+      command,
+      { env: { ...process.env, PGPASSWORD: env.DB_PASSWORD } },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject({ error: JSON.stringify(error), stderr });
+          return;
+        }
+        resolve(stdout);
+      }
+    );
+  });
 };
 
 const deleteFile = async (path: string) => {
@@ -60,7 +71,7 @@ export const backup = async () => {
     let date = new Date().toISOString();
     const timestamp = date.replace(/[:.]+/g, "-");
     const filename = `${env.BACKUP_PREFIX}backup-${timestamp}.sql.gz`;
-    const filepath = `/tmp/${filename}`;
+    const filepath = `/tmp/bucket-ai/${filename}`;
 
     console.log(`Dumping to file: ${filepath}`);
     await dumpToFile(filepath);
