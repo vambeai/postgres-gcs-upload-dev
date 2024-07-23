@@ -69,9 +69,12 @@ const clearDatabase = async () => {
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
-    const command = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -v ON_ERROR_STOP=1`;
+    const clearAndRestoreCommand = `
+      psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" &&
+      gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -v ON_ERROR_STOP=1
+    `;
     const childProcess = exec(
-      command,
+      clearAndRestoreCommand,
       {
         env: { ...process.env, PGPASSWORD: env.DB_PASSWORD },
         maxBuffer: 1024 * 1024 * 100, // Increase buffer size
