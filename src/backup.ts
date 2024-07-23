@@ -69,11 +69,13 @@ const clearDatabase = async () => {
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
-    // Remove --no-owner and --no-acl flags
-    const command = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres`;
-    exec(
+    const command = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -v ON_ERROR_STOP=1`;
+    const childProcess = exec(
       command,
-      { env: { ...process.env, PGPASSWORD: env.DB_PASSWORD } },
+      {
+        env: { ...process.env, PGPASSWORD: env.DB_PASSWORD },
+        maxBuffer: 1024 * 1024 * 100,
+      }, // Increase buffer size
       (error, stdout, stderr) => {
         if (error) {
           console.error("Restore error:", stderr);
@@ -86,6 +88,14 @@ const restoreFromFile = async (filePath: string) => {
         resolve(stdout);
       }
     );
+
+    childProcess.stdout!.on("data", (data) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    childProcess.stderr!.on("data", (data) => {
+      console.error(`stderr: ${data}`);
+    });
   });
 };
 
