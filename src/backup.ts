@@ -50,22 +50,19 @@ const downloadFromGCS = async ({
 const clearDatabase = async () => {
   console.log("Clearing existing database...");
   return new Promise((resolve, reject) => {
-    const command = `PGPASSWORD=${env.DB_PASSWORD} psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`;
-    exec(
-      command,
-      { env: { ...process.env, PGPASSWORD: env.DB_PASSWORD } },
-      (error, stdout, stderr) => {
-        if (error) {
-          console.error("Database clear error:", stderr);
-          reject({ error: JSON.stringify(error), stderr });
-          return;
-        }
-        if (stderr) {
-          console.warn("Database clear warning:", stderr);
-        }
-        resolve(stdout);
+    const connectionString = env.BACKUP_DATABASE_URL;
+    const command = `psql "${connectionString}" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`;
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error("Database clear error:", stderr);
+        reject({ error: JSON.stringify(error), stderr });
+        return;
       }
-    );
+      if (stderr) {
+        console.warn("Database clear warning:", stderr);
+      }
+      resolve(stdout);
+    });
   });
 };
 
