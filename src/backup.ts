@@ -69,8 +69,8 @@ const clearDatabase = async () => {
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
-    // Add --no-owner and --no-acl flags to ignore role-related commands
-    const command = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres --no-owner --no-acl`;
+    // Remove --no-owner and --no-acl flags
+    const command = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres`;
     exec(
       command,
       { env: { ...process.env, PGPASSWORD: env.DB_PASSWORD } },
