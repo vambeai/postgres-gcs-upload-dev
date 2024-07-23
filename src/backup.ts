@@ -1,7 +1,6 @@
 import { Storage } from "@google-cloud/storage";
 import { exec } from "child_process";
-import { unlink, writeFile } from "fs/promises";
-import path from "path";
+import { unlink } from "fs/promises";
 import { env } from "./env";
 
 const storage = new Storage({
@@ -69,12 +68,9 @@ const clearDatabase = async () => {
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
-    const clearAndRestoreCommand = `
-      psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" &&
-      gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -v ON_ERROR_STOP=1
-    `;
+    const restoreCommand = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -v ON_ERROR_STOP=1`;
     const childProcess = exec(
-      clearAndRestoreCommand,
+      restoreCommand,
       {
         env: { ...process.env, PGPASSWORD: env.DB_PASSWORD },
         maxBuffer: 1024 * 1024 * 500, // Increase buffer size
@@ -103,6 +99,17 @@ const restoreFromFile = async (filePath: string) => {
   });
 };
 
+const retryOperation = async (operation: Function, retries: number = 3) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === retries) throw error;
+      console.warn(`Attempt ${attempt} failed. Retrying...`);
+    }
+  }
+};
+
 export const restore = async () => {
   try {
     console.log("Initiating DB restore...");
@@ -113,13 +120,15 @@ export const restore = async () => {
     const filepath = `${latestBackupFilename}`;
 
     console.log(`Downloading file: ${latestBackupFilename}`);
-    await downloadFromGCS({ name: latestBackupFilename, path: filepath });
+    await retryOperation(() =>
+      downloadFromGCS({ name: latestBackupFilename, path: filepath })
+    );
 
     console.log("Clearing existing database...");
-    await clearDatabase();
+    await retryOperation(clearDatabase);
 
     console.log(`Restoring from file: ${filepath}`);
-    await restoreFromFile(filepath);
+    await retryOperation(() => restoreFromFile(filepath));
 
     console.log(`Deleting temporary file: ${filepath}`);
     await unlink(filepath);
