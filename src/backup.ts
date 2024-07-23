@@ -72,7 +72,7 @@ const clearDatabase = async () => {
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
-    const command = `gunzip -c ${filePath} | psql -h viaduct.proxy.rlwy.net -p 57886 -U postgres`;
+    const command = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres`;
     exec(
       command,
       { env: { ...process.env, PGPASSWORD: env.DB_PASSWORD } },
