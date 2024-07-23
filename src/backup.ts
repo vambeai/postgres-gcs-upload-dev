@@ -65,6 +65,25 @@ const clearDatabase = async () => {
   });
 };
 
+const testConnection = async () => {
+  console.log("Testing connection to the database...");
+  return new Promise((resolve, reject) => {
+    const connectionString = env.BACKUP_DATABASE_URL;
+    const command = `psql "${connectionString}" -c "SELECT 1;"`;
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error("Connection test error:", stderr);
+        reject({ error: JSON.stringify(error), stderr });
+        return;
+      }
+      if (stderr) {
+        console.warn("Connection test warning:", stderr);
+      }
+      resolve(stdout);
+    });
+  });
+};
+
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
@@ -123,6 +142,9 @@ export const restore = async () => {
     await retryOperation(() =>
       downloadFromGCS({ name: latestBackupFilename, path: filepath })
     );
+
+    console.log("Testing connection to the database...");
+    await retryOperation(testConnection);
 
     console.log("Clearing existing database...");
     await retryOperation(clearDatabase);
