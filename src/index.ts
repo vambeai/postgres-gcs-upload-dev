@@ -1,11 +1,11 @@
 import { CronJob } from "cron";
 
-import { backup } from "./backup";
+import { restore } from "./backup";
 import { env } from "./env";
 
 const tryBackup = async () => {
   try {
-    await backup();
+    await restore();
   } catch (error) {
     console.error("Error while running backup: ", error);
   }
