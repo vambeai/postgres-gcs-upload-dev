@@ -69,8 +69,7 @@ const clearDatabase = async () => {
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
-    // Assuming the backup is in custom or directory format. If it's plain SQL, you'll need to use psql instead.
-    const command = `gunzip -c ${filePath} | pg_restore -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway --no-owner --no-acl --clean --if-exists`;
+    const command = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -v ON_ERROR_STOP=1`;
     const childProcess = exec(
       command,
       {
