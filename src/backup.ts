@@ -1,50 +1,67 @@
-import { Storage, UploadOptions } from "@google-cloud/storage";
+import { Storage } from "@google-cloud/storage";
 import { exec } from "child_process";
-import { mkdir, stat, unlink } from "fs/promises";
+import { unlink, writeFile } from "fs/promises";
 import path from "path";
-
 import { env } from "./env";
 
-const uploadToGCS = async ({ name, path }: { name: string; path: string }) => {
-  console.log("Uploading backup to GCS...");
+const storage = new Storage({
+  projectId: env.GOOGLE_PROJECT_ID,
+  credentials: JSON.parse(env.SERVICE_ACCOUNT_JSON),
+});
 
+const getLatestBackupFile = async (): Promise<string> => {
+  console.log("Getting latest backup file from GCS...");
+  const bucketName = env.GCS_BUCKET;
+  const [files] = await storage.bucket(bucketName).getFiles();
+
+  if (files.length === 0) {
+    throw new Error("No backup files found in the bucket");
+  }
+
+  const backupFiles = files
+    .filter(
+      (file) => file.name.startsWith("backup-") && file.name.endsWith(".sql.gz")
+    )
+    .sort((a, b) =>
+      b.metadata.timeCreated!.localeCompare(a.metadata.timeCreated!)
+    );
+
+  if (backupFiles.length === 0) {
+    throw new Error("No valid backup files found in the bucket");
+  }
+
+  return backupFiles[0].name;
+};
+
+const downloadFromGCS = async ({
+  name,
+  path,
+}: {
+  name: string;
+  path: string;
+}) => {
+  console.log(`Downloading backup ${name} from GCS...`);
   const bucketName = env.GCS_BUCKET;
 
-  const uploadOptions: UploadOptions = {
-    destination: name,
-  };
-
-  const storage = new Storage({
-    projectId: env.GOOGLE_PROJECT_ID,
-    credentials: JSON.parse(env.SERVICE_ACCOUNT_JSON),
-  });
-
-  await storage.bucket(bucketName).upload(path, uploadOptions);
-
-  console.log("Backup uploaded to GCS...");
+  await storage.bucket(bucketName).file(name).download({ destination: path });
+  console.log("Backup downloaded from GCS...");
 };
 
-const ensureDirectoryExists = async (filePath: string) => {
-  const directory = path.dirname(filePath);
-  await mkdir(directory, { recursive: true });
-};
-
-const dumpToFile = async (filePath: string) => {
-  console.log("Dumping DB to file...");
-  await ensureDirectoryExists(filePath);
+const clearDatabase = async () => {
+  console.log("Clearing existing database...");
   return new Promise((resolve, reject) => {
-    const command = `pg_dumpall -h viaduct.proxy.rlwy.net -p 57886 -U postgres | gzip > ${filePath}`;
+    const command = `psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`;
     exec(
       command,
       { env: { ...process.env, PGPASSWORD: env.DB_PASSWORD } },
       (error, stdout, stderr) => {
         if (error) {
-          console.error("pg_dumpall error:", stderr);
+          console.error("Database clear error:", stderr);
           reject({ error: JSON.stringify(error), stderr });
           return;
         }
         if (stderr) {
-          console.warn("pg_dumpall warning:", stderr);
+          console.warn("Database clear warning:", stderr);
         }
         resolve(stdout);
       }
@@ -52,40 +69,51 @@ const dumpToFile = async (filePath: string) => {
   });
 };
 
-const deleteFile = async (path: string) => {
-  console.log("Deleting file...");
-  try {
-    await unlink(path);
-    console.log("File deleted successfully");
-  } catch (error) {
-    console.error("Error deleting file:", error);
-    throw error; // Re-throw the error if you want to handle it in the calling function
-  }
+const restoreFromFile = async (filePath: string) => {
+  console.log("Restoring DB from file...");
+  return new Promise((resolve, reject) => {
+    const command = `gunzip -c ${filePath} | psql -h viaduct.proxy.rlwy.net -p 57886 -U postgres`;
+    exec(
+      command,
+      { env: { ...process.env, PGPASSWORD: env.DB_PASSWORD } },
+      (error, stdout, stderr) => {
+        if (error) {
+          console.error("Restore error:", stderr);
+          reject({ error: JSON.stringify(error), stderr });
+          return;
+        }
+        if (stderr) {
+          console.warn("Restore warning:", stderr);
+        }
+        resolve(stdout);
+      }
+    );
+  });
 };
 
-export const backup = async () => {
+export const restore = async () => {
   try {
-    console.log("Initiating DB backup...");
+    console.log("Initiating DB restore...");
 
-    let date = new Date().toISOString();
-    const timestamp = date.replace(/[:.]+/g, "-");
-    const filename = `backup-${timestamp}.sql.gz`;
-    const filepath = `/tmp/bucket-ai/${filename}`;
+    const latestBackupFilename = await getLatestBackupFile();
+    console.log(`Latest backup file: ${latestBackupFilename}`);
 
-    console.log(`Dumping to file: ${filepath}`);
-    await dumpToFile(filepath);
+    const filepath = `/tmp/bucket-ai/${latestBackupFilename}`;
 
-    const stats = await stat(filepath);
-    console.log(`File size after dump: ${stats.size} bytes`);
+    console.log(`Downloading file: ${latestBackupFilename}`);
+    await downloadFromGCS({ name: latestBackupFilename, path: filepath });
 
-    console.log(`Uploading file: ${filename}`);
-    await uploadToGCS({ name: filename, path: filepath });
+    console.log("Clearing existing database...");
+    await clearDatabase();
 
-    console.log(`Deleting file: ${filepath}`);
-    await deleteFile(filepath);
+    console.log(`Restoring from file: ${filepath}`);
+    await restoreFromFile(filepath);
 
-    console.log("DB backup complete...");
+    console.log(`Deleting temporary file: ${filepath}`);
+    await unlink(filepath);
+
+    console.log("DB restore complete...");
   } catch (error) {
-    console.error("Backup failed:", error);
+    console.error("Restore failed:", error);
   }
 };
