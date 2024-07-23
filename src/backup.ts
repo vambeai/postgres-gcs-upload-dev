@@ -93,7 +93,7 @@ const restoreFromFile = async (filePath: string) => {
       {
         env: { ...process.env, PGPASSWORD: env.DB_PASSWORD },
         maxBuffer: 1024 * 1024 * 500, // Increase buffer size
-        timeout: 300000, // Increase timeout to 5 minutes
+        timeout: 600000, // Increase timeout to 10 minutes
       },
       (error, stdout, stderr) => {
         if (error) {
