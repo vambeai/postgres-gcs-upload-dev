@@ -52,7 +52,7 @@ const clearDatabase = async () => {
   return new Promise((resolve, reject) => {
     const connectionString = env.BACKUP_DATABASE_URL;
     const command = `psql "${connectionString}" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`;
-    exec(command, (error, stdout, stderr) => {
+    exec(command, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
       if (error) {
         console.error("Database clear error:", stderr);
         reject({ error: JSON.stringify(error), stderr });
@@ -77,7 +77,8 @@ const restoreFromFile = async (filePath: string) => {
       clearAndRestoreCommand,
       {
         env: { ...process.env, PGPASSWORD: env.DB_PASSWORD },
-        maxBuffer: 1024 * 1024 * 100, // Increase buffer size
+        maxBuffer: 1024 * 1024 * 500, // Increase buffer size
+        timeout: 300000, // Increase timeout to 5 minutes
       },
       (error, stdout, stderr) => {
         if (error) {
