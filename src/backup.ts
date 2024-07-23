@@ -98,7 +98,7 @@ export const restore = async () => {
     const latestBackupFilename = await getLatestBackupFile();
     console.log(`Latest backup file: ${latestBackupFilename}`);
 
-    const filepath = `/backup-vambe-ai/${latestBackupFilename}`;
+    const filepath = `backup-vambe-ai/${latestBackupFilename}`;
 
     console.log(`Downloading file: ${latestBackupFilename}`);
     await downloadFromGCS({ name: latestBackupFilename, path: filepath });
