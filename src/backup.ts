@@ -50,7 +50,7 @@ const downloadFromGCS = async ({
 const clearDatabase = async () => {
   console.log("Clearing existing database...");
   return new Promise((resolve, reject) => {
-    const command = `psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`;
+    const command = `PGPASSWORD=${env.DB_PASSWORD} psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`;
     exec(
       command,
       { env: { ...process.env, PGPASSWORD: env.DB_PASSWORD } },
