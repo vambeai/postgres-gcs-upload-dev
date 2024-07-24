@@ -118,13 +118,18 @@ const restoreFromFile = async (filePath: string) => {
   });
 };
 
-const retryOperation = async (operation: Function, retries: number = 3) => {
+const retryOperation = async (
+  operation: Function,
+  retries: number = 3,
+  delay: number = 5000
+) => {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       return await operation();
     } catch (error) {
       if (attempt === retries) throw error;
-      console.warn(`Attempt ${attempt} failed. Retrying...`);
+      console.warn(`Attempt ${attempt} failed. Retrying in ${delay}ms...`);
+      await new Promise((res) => setTimeout(res, delay));
     }
   }
 };
