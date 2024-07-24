@@ -93,7 +93,7 @@ const restoreFromFile = async (filePath: string) => {
       {
         env: { ...process.env, PGPASSWORD: env.DB_PASSWORD },
         maxBuffer: 1024 * 1024 * 500, // Increase buffer size
-        timeout: 600000, // Increase timeout to 10 minutes
+        timeout: 1200000, // Increase timeout to 20 minutes
       },
       (error, stdout, stderr) => {
         if (error) {
@@ -130,6 +130,7 @@ const retryOperation = async (
       if (attempt === retries) throw error;
       console.warn(`Attempt ${attempt} failed. Retrying in ${delay}ms...`);
       await new Promise((res) => setTimeout(res, delay));
+      delay *= 2; // Exponential backoff
     }
   }
 };
