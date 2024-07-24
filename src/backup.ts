@@ -19,7 +19,7 @@ const getLatestBackupFile = async (): Promise<string> => {
 
   const backupFiles = files
     .filter(
-      (file) => file.name.startsWith("backup-") && file.name.endsWith(".sql.gz")
+      (file) => file.name.startsWith("backup-") && file.name.endsWith(".dump")
     )
     .sort((a, b) =>
       b.metadata.timeCreated!.localeCompare(a.metadata.timeCreated!)
@@ -87,7 +87,7 @@ const testConnection = async () => {
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
-    const restoreCommand = `gunzip -c ${filePath} | psql -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -v ON_ERROR_STOP=1`;
+    const restoreCommand = `pg_restore -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -v ${filePath}`;
     const childProcess = exec(
       restoreCommand,
       {
