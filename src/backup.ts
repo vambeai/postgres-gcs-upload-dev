@@ -87,7 +87,7 @@ const testConnection = async () => {
 const restoreFromFile = async (filePath: string) => {
   console.log("Restoring DB from file...");
   return new Promise((resolve, reject) => {
-    const restoreCommand = `pg_restore -h roundhouse.proxy.rlwy.net -p 43335 -U postgres -d railway -v ${filePath}`;
+    const restoreCommand = `pg_restore -U postgres -h roundhouse.proxy.rlwy.net -p 43335 -W -F t -d railway ${filePath}`;
     const childProcess = exec(
       restoreCommand,
       {
