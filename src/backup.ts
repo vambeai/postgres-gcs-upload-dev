@@ -1,6 +1,6 @@
 import { Storage } from "@google-cloud/storage";
 import { exec } from "child_process";
-import { unlink } from "fs/promises";
+import { stat, unlink } from "fs/promises";
 import { env } from "./env";
 
 const storage = new Storage({
@@ -41,8 +41,10 @@ const downloadFromGCS = async ({
 }) => {
   console.log(`Downloading backup ${name} from GCS...`);
   const bucketName = env.GCS_BUCKET;
+  const [metadata] = await storage.bucket(bucketName).file(name).getMetadata();
 
   await storage.bucket(bucketName).file(name).download({ destination: path });
+  await verifyFileSize(path, Number(metadata.size ?? "0"));
   console.log("Backup downloaded from GCS...");
 };
 
@@ -135,11 +137,20 @@ const retryOperation = async (
   }
 };
 
+const verifyFileSize = async (localPath: string, expectedSize: number) => {
+  const stats = await stat(localPath);
+  if (stats.size !== expectedSize) {
+    throw new Error(
+      `File size mismatch. Expected: ${expectedSize}, Actual: ${stats.size}`
+    );
+  }
+};
+
 export const restore = async () => {
   try {
     console.log("Initiating DB restore...");
 
-    const latestBackupFilename = "backup-2024-08-05T05-00-00-107Z.dump";
+    const latestBackupFilename = await getLatestBackupFile();
     console.log(`Latest backup file: ${latestBackupFilename}`);
 
     const filepath = `${latestBackupFilename}`;
