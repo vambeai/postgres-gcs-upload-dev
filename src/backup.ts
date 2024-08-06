@@ -139,7 +139,7 @@ export const restore = async () => {
   try {
     console.log("Initiating DB restore...");
 
-    const latestBackupFilename = await getLatestBackupFile();
+    const latestBackupFilename = "backup-2024-08-05T05-00-00-107Z.dump";
     console.log(`Latest backup file: ${latestBackupFilename}`);
 
     const filepath = `${latestBackupFilename}`;
