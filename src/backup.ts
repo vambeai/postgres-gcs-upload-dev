@@ -148,6 +148,8 @@ const verifyFileSize = async (localPath: string, expectedSize: number) => {
 
 export const restore = async () => {
   try {
+    // sleep for 3 seconds to allow the database to start
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     console.log("Initiating DB restore...");
 
     const latestBackupFilename = await getLatestBackupFile();
