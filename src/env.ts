@@ -11,7 +11,7 @@ export const env = envsafe({
   }),
   BACKUP_CRON_SCHEDULE: str({
     desc: "The cron schedule to run the backup on.",
-    default: "0 5 * * *",
+    default: "0 7 * * *",
     allowEmpty: true,
   }),
   BACKUP_PREFIX: str({
