@@ -21,3 +21,4 @@ if (env.RUN_ON_STARTUP) {
 job.start();
 
 console.log("Backup cron scheduled...");
+
