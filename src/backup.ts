@@ -29,7 +29,7 @@ const getLatestBackupFile = async (): Promise<string> => {
     throw new Error("No valid backup files found in the bucket");
   }
 
-  return backupFiles[1].name;
+  return backupFiles[0].name;
 };
 
 const downloadFromGCS = async ({
